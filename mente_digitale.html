@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La mia mente digitale</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Outfit:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #080a0e;
+  --surface: #0e1117;
+  --surface2: #141820;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --text: #dde3ee;
+  --muted: #5a6278;
+  --accent: #c8a96e;
+  --accent2: rgba(200,169,110,0.15);
+  --r: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Outfit', sans-serif;
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,10,14,0.92);
+  backdrop-filter: blur(16px);
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.header-left { display:flex; align-items:baseline; gap:12px; }
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+.header-sub { font-size: 11px; color: var(--muted); font-weight: 300; letter-spacing: 0.04em; }
+
+.sync-status { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--muted); }
+
+.sync-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); transition:background 0.3s; }
+.sync-dot.ok { background: #86c07a; }
+.sync-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+.sync-dot.error { background: #c07a7a; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+#login-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.login-title { font-family:'Playfair Display',serif; font-size:24px; color:var(--accent); margin-bottom:10px; }
+.login-desc { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:28px; }
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent2);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  transition: background 0.2s;
+}
+.login-btn:hover { background: rgba(200,169,110,0.25); }
+
+.login-note { font-size:11px; color:var(--muted); margin-top:16px; line-height:1.6; }
+
+#app {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+  position: relative;
+}
+
+#canvas-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 35%, rgba(126,184,201,0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 65%, rgba(192,132,160,0.04) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(200,169,110,0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+#canvas { position:absolute; inset:0; width:100%; height:100%; }
+
+#panel {
+  position: absolute;
+  right:0; top:0; bottom:0;
+  width: 300px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.38s cubic-bezier(0.4,0,0.2,1);
+  z-index: 50;
+}
+#panel.open { transform: translateX(0); }
+
+.panel-head {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-label { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.panel-title { font-family:'Playfair Display',serif; font-size:20px; font-weight:400; line-height:1.2; }
+
+.panel-close {
+  background:none; border:1px solid var(--border2); color:var(--muted);
+  width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition: background 0.15s;
+}
+.panel-close:hover { background:rgba(255,255,255,0.05); color:var(--text); }
+
+.panel-body { flex:1; overflow-y:auto; padding:18px 22px; }
+
+.panel-section-title {
+  font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:10px;
+}
+
+.panel-link {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:var(--r);
+  border:1px solid var(--border);
+  text-decoration:none; color:var(--text); font-size:13px;
+  margin-bottom:5px; background:rgba(255,255,255,0.02);
+  transition: background 0.15s, border-color 0.15s;
+  cursor:pointer;
+}
+.panel-link:hover { background:rgba(255,255,255,0.05); border-color:var(--border2); }
+.panel-link-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.panel-link-count { margin-left:auto; font-size:10px; color:var(--muted); background:var(--surface2); padding:2px 7px; border-radius:10px; }
+
+#loading {
+  position:absolute; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; z-index:80; transition:opacity 0.4s;
+}
+#loading.hidden { opacity:0; pointer-events:none; }
+
+.loading-text { font-size:13px; color:var(--muted); }
+.loading-bar { width:160px; height:2px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.loading-bar-fill { height:100%; background:var(--accent); border-radius:2px; animation:loadBar 1.4s ease-in-out infinite; }
+@keyframes loadBar { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+
+#tooltip {
+  position:fixed; background:var(--surface2); border:1px solid var(--border2);
+  border-radius:6px; padding:6px 11px; font-size:11px; color:var(--muted);
+  pointer-events:none; opacity:0; transition:opacity 0.12s; z-index:200; white-space:nowrap;
+}
+#tooltip.show { opacity:1; }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Mente Digitale</h1>
+    <span class="header-sub">OneNote — mappa dinamica</span>
+  </div>
+  <div class="sync-status">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-label">Non connesso</span>
+  </div>
+</header>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">Benvenuto</div>
+    <div class="login-desc">
+      Accedi con il tuo account Microsoft per caricare<br>
+      i tuoi taccuini OneNote automaticamente.
+    </div>
+    <button class="login-btn" onclick="login()">
+      <svg width="16" height="16" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Accedi con Microsoft
+    </button>
+    <div class="login-note">
+      Vengono richiesti solo i permessi di lettura<br>per i tuoi taccuini OneNote.
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="canvas-bg"></div>
+  <div id="loading">
+    <div class="loading-text">Caricamento taccuini OneNote…</div>
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  </div>
+  <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-label" id="panel-label">Taccuino</div>
+        <div class="panel-title" id="panel-title">—</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const CLIENT_ID = 'b639e8ea-2c30-4beb-8226-46e342721a50';
+const SCOPES    = 'Notes.Read offline_access';
+const REDIRECT = "https://michelecoppino-cell.github.io/mente_digitale.html/";
+const GRAPH     = 'https://graph.microsoft.com/v1.0';
+const COLORS    = ['#7eb8c9','#c084a0','#86c07a','#c8a96e','#a084c8','#c8907a','#7ab8a0'];
+
+let notebooks = [], expanded = {}, sections = {};
+
+// ── AUTH PKCE ──
+function login() {
+  const verifier = genVerifier();
+  sessionStorage.setItem('cv', verifier);
+  genChallenge(verifier).then(challenge => {
+    const state = Math.random().toString(36).slice(2);
+    sessionStorage.setItem('state', state);
+    const url = new URL('https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+    url.searchParams.set('client_id', CLIENT_ID);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('redirect_uri', REDIRECT);
+    url.searchParams.set('scope', SCOPES);
+    url.searchParams.set('state', state);
+    url.searchParams.set('code_challenge', challenge);
+    url.searchParams.set('code_challenge_method', 'S256');
+    url.searchParams.set('response_mode', 'query');
+    window.location.href = url.toString();
+  });
+}
+
+function genVerifier() {
+  const a = new Uint8Array(32);
+  crypto.getRandomValues(a);
+  return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function genChallenge(v) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function exchangeCode(code) {
+  const r = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      client_id:CLIENT_ID, grant_type:'authorization_code',
+      code, redirect_uri:REDIRECT,
+      code_verifier:sessionStorage.getItem('cv'), scope:SCOPES
+    })
+  });
+  const d = await r.json();
+  if (d.access_token) { sessionStorage.setItem('at', d.access_token); return true; }
+  return false;
+}
+
+// ── GRAPH ──
+async function graph(path) {
+  const r = await fetch(GRAPH + path, { headers:{ Authorization:'Bearer '+sessionStorage.getItem('at') } });
+  if (!r.ok) throw new Error(''+r.status);
+  return r.json();
+}
+
+// ── INIT ──
+async function init() {
+  const p = new URLSearchParams(window.location.search);
+  const code = p.get('code'), state = p.get('state');
+  if (code && state === sessionStorage.getItem('state')) {
+    window.history.replaceState({}, '', window.location.pathname);
+    await exchangeCode(code);
+  }
+  if (sessionStorage.getItem('at')) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    setSyncStatus('loading','Caricamento…');
+    try {
+      const d = await graph('/me/onenote/notebooks?$orderby=displayName');
+      notebooks = d.value;
+      notebooks.forEach((nb,i) => nb._color = COLORS[i % COLORS.length]);
+      setSyncStatus('ok', notebooks.length+' taccuini · aggiornato ora');
+      document.getElementById('loading').classList.add('hidden');
+      render();
+    } catch(e) {
+      setSyncStatus('error','Errore — ricarica la pagina');
+      document.getElementById('loading').classList.add('hidden');
+    }
+  }
+}
+
+function setSyncStatus(s,l) {
+  document.getElementById('sync-dot').className='sync-dot '+s;
+  document.getElementById('sync-label').textContent=l;
+}
+
+// ── GEOMETRIA ──
+function W(){ return document.getElementById('app').offsetWidth; }
+function H(){ return document.getElementById('app').offsetHeight; }
+function cx(){ return W()/2; }
+function cy(){ return H()/2; }
+
+function mainPos(i, total) {
+  const a = (-90 + i*(360/total)) * Math.PI/180;
+  const r = Math.min(W(), H()) * 0.3;
+  return { x: cx()+r*Math.cos(a), y: cy()+r*Math.sin(a) };
+}
+
+function subPos(mp, i, total) {
+  const base = Math.atan2(mp.y-cy(), mp.x-cx());
+  const spread = total===1?0:0.55;
+  const step = total>1?(spread*2)/(total-1):0;
+  const a = base - spread + i*step;
+  const r = 105;
+  return { x: mp.x+r*Math.cos(a), y: mp.y+r*Math.sin(a) };
+}
+
+// ── SVG ──
+const NS='http://www.w3.org/2000/svg';
+function se(tag,a){const e=document.createElementNS(NS,tag);if(a)for(const[k,v]of Object.entries(a))e.setAttribute(k,v);return e;}
+function line(x1,y1,x2,y2,stroke,dash,op=0.25){return se('line',{x1,y1,x2,y2,stroke,'stroke-width':dash?1:1.5,'stroke-dasharray':dash?'4 6':'','stroke-linecap':'round',opacity:op});}
+function circ(x,y,r,fill,stroke,sw=1.5,op=1){return se('circle',{cx:x,cy:y,r,fill,stroke,'stroke-width':sw,opacity:op});}
+function txt(x,y,t,sz,fill,w='400',anchor='middle'){const e=se('text',{x,y,'text-anchor':anchor,'dominant-baseline':'central','font-family':'Outfit,sans-serif','font-size':sz,'font-weight':w,fill});e.textContent=t;return e;}
+
+function render() {
+  const svg=document.getElementById('canvas');
+  svg.innerHTML='';
+  const total=notebooks.length;
+  if(!total) return;
+
+  notebooks.forEach((nb,i) => {
+    const mp=mainPos(i,total);
+    svg.appendChild(line(cx(),cy(),mp.x,mp.y,nb._color,false,0.18));
+  });
+
+  // Centro
+  const gc=se('g');
+  gc.appendChild(circ(cx(),cy(),62,'rgba(200,169,110,0.04)','none'));
+  gc.appendChild(circ(cx(),cy(),48,'#0e1117','rgba(200,169,110,0.45)',1.5));
+  gc.appendChild(txt(cx(),cy()-9,'OneNote','11','#c8a96e','400'));
+  gc.appendChild(txt(cx(),cy()+9,total+' taccuini','10','rgba(200,169,110,0.45)','300'));
+  svg.appendChild(gc);
+
+  notebooks.forEach((nb,i) => {
+    const mp=mainPos(i,total);
+    const isExp=!!expanded[nb.id];
+    const sects=sections[nb.id]||[];
+
+    if(isExp) sects.forEach((s,j) => {
+      const sp=subPos(mp,j,sects.length);
+      svg.appendChild(line(mp.x,mp.y,sp.x,sp.y,nb._color,true,0.38));
+    });
+
+    const gm=se('g',{style:'cursor:pointer'});
+    gm.appendChild(circ(mp.x,mp.y,50,nb._color+'07','none'));
+    gm.appendChild(circ(mp.x,mp.y,40,'none',nb._color+'22',1));
+    gm.appendChild(circ(mp.x,mp.y,34,'#0e1117',nb._color,isExp?2:1.5));
+
+    const words=nb.displayName.split(' ');
+    if(words.length>1 && nb.displayName.length>10){
+      const m=Math.ceil(words.length/2);
+      gm.appendChild(txt(mp.x,mp.y-7,words.slice(0,m).join(' '),'11',nb._color,'500'));
+      gm.appendChild(txt(mp.x,mp.y+8,words.slice(m).join(' '),'11',nb._color,'500'));
+    } else {
+      gm.appendChild(txt(mp.x,mp.y,nb.displayName,'12',nb._color,'500'));
+    }
+
+    gm.addEventListener('click',()=>toggleNb(nb));
+    gm.addEventListener('mouseenter',e=>tip(e,isExp?'Chiudi':'Espandi sezioni'));
+    gm.addEventListener('mouseleave',hideTip);
+    svg.appendChild(gm);
+
+    if(isExp) sects.forEach((s,j) => {
+      const sp=subPos(mp,j,sects.length);
+      const gs=se('g',{style:'cursor:pointer'});
+      gs.appendChild(circ(sp.x,sp.y,30,nb._color+'06','none'));
+      gs.appendChild(circ(sp.x,sp.y,22,'#0d1016',nb._color,1,0.88));
+      const short=s.displayName.length>11?s.displayName.slice(0,10)+'…':s.displayName;
+      gs.appendChild(txt(sp.x,sp.y,short,'10',nb._color,'400'));
+      gs.addEventListener('click',()=>clickSection(s,nb));
+      gs.addEventListener('mouseenter',e=>tip(e,s.displayName));
+      gs.addEventListener('mouseleave',hideTip);
+      svg.appendChild(gs);
+    });
+  });
+}
+
+async function toggleNb(nb) {
+  if(expanded[nb.id]){ expanded[nb.id]=false; closePanel(); render(); return; }
+  if(!sections[nb.id]){
+    setSyncStatus('loading','Caricamento sezioni…');
+    try {
+      const d=await graph('/me/onenote/notebooks/'+nb.id+'/sections?$orderby=displayName');
+      sections[nb.id]=d.value;
+      setSyncStatus('ok','Aggiornato');
+    } catch(e){ setSyncStatus('error','Errore'); return; }
+  }
+  Object.keys(expanded).forEach(k=>expanded[k]=false);
+  expanded[nb.id]=true;
+  render();
+  openPanel(nb);
+}
+
+function openPanel(nb) {
+  document.getElementById('panel-label').textContent='Taccuino';
+  document.getElementById('panel-title').textContent=nb.displayName;
+  document.getElementById('panel-title').style.color=nb._color;
+  const body=document.getElementById('panel-body');
+  body.innerHTML='';
+  const sects=sections[nb.id]||[];
+
+  addPanelTitle(body,'Apri in OneNote');
+  const mainA=mkLink(nb._color,nb.displayName,nb.links?.oneNoteWebUrl?.href||'#');
+  const cnt=document.createElement('span');
+  cnt.className='panel-link-count';
+  cnt.textContent=sects.length+' sezioni';
+  mainA.appendChild(cnt);
+  body.appendChild(mainA);
+
+  if(sects.length){
+    const t=addPanelTitle(body,'Sezioni ('+sects.length+')');
+    t.style.marginTop='18px';
+    sects.forEach(s=>{
+      const a=mkLink(nb._color+'99',s.displayName,s.links?.oneNoteWebUrl?.href||'#');
+      body.appendChild(a);
+    });
+  }
+  document.getElementById('panel').classList.add('open');
+}
+
+function addPanelTitle(body,text){
+  const d=document.createElement('div');
+  d.className='panel-section-title';
+  d.textContent=text;
+  body.appendChild(d);
+  return d;
+}
+
+function mkLink(color,label,href){
+  const a=document.createElement('a');
+  a.className='panel-link';
+  a.href=href; a.target='_blank';
+  const dot=document.createElement('span');
+  dot.className='panel-link-dot';
+  dot.style.background=color;
+  const sp=document.createElement('span');
+  sp.textContent=label;
+  a.appendChild(dot); a.appendChild(sp);
+  return a;
+}
+
+async function clickSection(s,nb){
+  const url=s.links?.oneNoteWebUrl?.href;
+  if(url){ window.open(url,'_blank'); return; }
+  document.getElementById('panel-label').textContent='Sezione';
+  document.getElementById('panel-title').textContent=s.displayName;
+  document.getElementById('panel-title').style.color=nb._color;
+  const body=document.getElementById('panel-body');
+  body.innerHTML='';
+  addPanelTitle(body,'Caricamento pagine…');
+  document.getElementById('panel').classList.add('open');
+  try {
+    const d=await graph('/me/onenote/sections/'+s.id+'/pages?$orderby=lastModifiedDateTime desc&$top=8');
+    body.innerHTML='';
+    addPanelTitle(body,'Ultime pagine');
+    d.value.forEach(p=>{
+      const a=mkLink(nb._color+'77',p.title||'Senza titolo',p.links?.oneNoteWebUrl?.href||'#');
+      body.appendChild(a);
+    });
+  } catch(e){ body.innerHTML='<div class="panel-section-title" style="color:#c07a7a">Errore caricamento</div>'; }
+}
+
+function closePanel(){ document.getElementById('panel').classList.remove('open'); }
+
+// ── TOOLTIP ──
+const tipEl=document.getElementById('tooltip');
+function tip(e,t){ tipEl.textContent=t; tipEl.classList.add('show'); mv(e); }
+function mv(e){ tipEl.style.left=(e.clientX+12)+'px'; tipEl.style.top=(e.clientY-28)+'px'; }
+function hideTip(){ tipEl.classList.remove('show'); }
+document.addEventListener('mousemove',e=>{ if(tipEl.classList.contains('show'))mv(e); });
+
+window.addEventListener('resize',()=>{ if(notebooks.length)render(); });
+
+init();
+</script>
+</body>
+</html>
